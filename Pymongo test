@@ -1,3 +1,4 @@
+#Funções prontas, apenas importe para o main para funcionar a interface(Ready-made functions, just import to main to work the interface)
 import pymongo
 
 uri = "mongodb+srv://usuarioteste:gFRoYrQ4kPb2Vd5d@cluster0.nqeqtdy.mongodb.net/?retryWrites=true&w=majority"
