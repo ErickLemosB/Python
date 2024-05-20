@@ -1,0 +1,113 @@
+import mysql.connector
+from pymongo import MongoClient
+from datetime import datetime, date
+
+def fetch_mysql_data():
+    # Conexão com o banco de dados MySQL
+    mysql_conn = mysql.connector.connect(
+        host="localhost",
+        user="erick",
+        password="erick",
+        database="employees"
+    )
+    cursor = mysql_conn.cursor(dictionary=True)
+
+    # Consultas SQL para obter dados dos empregados e suas relações
+    query_employees = "SELECT * FROM employees"
+    query_salaries = "SELECT * FROM salaries"
+    query_titles = "SELECT * FROM titles"
+    query_dept_emp = "SELECT * FROM dept_emp"
+    query_dept_manager = "SELECT * FROM dept_manager"
+    query_departments = "SELECT * FROM departments"
+
+    cursor.execute(query_employees)
+    employees = cursor.fetchall()
+
+    cursor.execute(query_salaries)
+    salaries = cursor.fetchall()
+
+    cursor.execute(query_titles)
+    titles = cursor.fetchall()
+
+    cursor.execute(query_dept_emp)
+    dept_emp = cursor.fetchall()
+
+    cursor.execute(query_dept_manager)
+    dept_manager = cursor.fetchall()
+
+    cursor.execute(query_departments)
+    departments = cursor.fetchall()
+
+    cursor.close()
+    mysql_conn.close()
+
+    return employees, salaries, titles, dept_emp, dept_manager, departments
+
+def convert_dates(data):
+    for key, value in data.items():
+        if isinstance(value, date):
+            data[key] = datetime.combine(value, datetime.min.time())
+    return data
+
+def process_data(employees, salaries, titles, dept_emp, dept_manager, departments):
+    # Agrupar os dados de acordo com os empregados
+    emp_dict = {emp['emp_no']: convert_dates(emp) for emp in employees}
+
+    for salary in salaries:
+        emp_no = salary['emp_no']
+        salary = convert_dates(salary)
+        if 'salaries' not in emp_dict[emp_no]:
+            emp_dict[emp_no]['salaries'] = []
+        emp_dict[emp_no]['salaries'].append(salary)
+
+    for title in titles:
+        emp_no = title['emp_no']
+        title = convert_dates(title)
+        if 'titles' not in emp_dict[emp_no]:
+            emp_dict[emp_no]['titles'] = []
+        emp_dict[emp_no]['titles'].append(title)
+
+    for dep in dept_emp:
+        emp_no = dep['emp_no']
+        dep = convert_dates(dep)
+        if 'departments' not in emp_dict[emp_no]:
+            emp_dict[emp_no]['departments'] = []
+        emp_dict[emp_no]['departments'].append(dep)
+
+    for manager in dept_manager:
+        emp_no = manager['emp_no']
+        manager = convert_dates(manager)
+        if 'managed_departments' not in emp_dict[emp_no]:
+            emp_dict[emp_no]['managed_departments'] = []
+        emp_dict[emp_no]['managed_departments'].append(manager)
+
+    dept_dict = {dept['dept_no']: dept for dept in departments}
+
+    return list(emp_dict.values()), dept_dict
+
+def insert_into_mongodb(employees, departments):
+    # Conexão com o MongoDB
+    mongo_client = MongoClient("mongodb+srv://erickbarreto14elb:jaG3ADEr3TttJMFk@testes.k4icgzt.mongodb.net/?retryWrites=true&w=majority&appName=Testes")
+    db = mongo_client.DB_teste
+    employees_col = db.employees
+
+    for emp in employees:
+        # Upsert (update or insert)
+        employees_col.update_one(
+            {'emp_no': emp['emp_no']},
+            {'$set': emp},
+            upsert=True
+        )
+
+def main():
+    # Extrair os dados do MySQL
+    employees, salaries, titles, dept_emp, dept_manager, departments = fetch_mysql_data()
+
+    # Processar os dados para agregação
+    processed_employees, dept_dict = process_data(employees, salaries, titles, dept_emp, dept_manager, departments)
+
+    # Inserir os dados no MongoDB
+    insert_into_mongodb(processed_employees, dept_dict)
+
+if __name__ == "__main__":
+    main()
