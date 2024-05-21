@@ -1,0 +1,41 @@
+from pymongo import MongoClient
+def connect_to_mongo():
+    client = MongoClient('mongodb+srv://erickbarreto14elb:jaG3ADEr3TttJMFk@testes.k4icgzt.mongodb.net/?retryWrites=true&w=majority&appName=Testes')
+    db = client['DB_teste_beta']
+    return db['employees']
+
+def get_employee_by_emp_no(collection, emp_no):
+    return collection.find_one({"emp_no": emp_no})
+def get_employees_by_dept_no(collection, dept_no):
+    return list(collection.find({"departments.dept_no": dept_no}))
+
+def main():
+    collection = connect_to_mongo()
+
+    search_type = input("Você deseja pesquisar por emp_no ou dept_no? (Digite 'emp_no' ou 'dept_no'): ").strip()
+
+    if search_type == 'emp_no':
+        emp_no = int(input("Digite o número do empregado (emp_no): ").strip())
+        employee = get_employee_by_emp_no(collection, emp_no)
+
+        if employee:
+            print(f"Funcionário encontrado: {employee}")
+        else:
+            print("Nenhum funcionário encontrado com o emp_no fornecido.")
+
+    elif search_type == 'dept_no':
+        dept_no = input("Digite o número do departamento (dept_no): ").strip()
+        employees = get_employees_by_dept_no(collection, dept_no)
+
+        if employees:
+            print(f"Funcionários no departamento {dept_no}:")
+            for emp in employees:
+                print(emp)
+        else:
+            print(f"Nenhum funcionário encontrado no departamento {dept_no}.")
+
+    else:
+        print("Entrada inválida. Por favor, digite 'emp_no' ou 'dept_no'.")
+
+if __name__ == "__main__":
+    main()
